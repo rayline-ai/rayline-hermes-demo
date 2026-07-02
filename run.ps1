@@ -1,20 +1,17 @@
 # rayline-hermes-demo — daily start script.
-# Brings up Docker Desktop (if needed), the sandbox, the Rayline router, and the Hermes
+# Brings up Docker (if needed), then the sbx sandbox, the Rayline router, and the Hermes
 # gateway (Telegram). Assumes one-time setup is done (see README.md).
+#
+# `sbx exec` runs in the mounted repo, so all in-sandbox paths below are relative.
 
 $ErrorActionPreference = "Stop"
 
 $Sandbox = "rayline-hermes-demo"
 
-# Windows repo path -> in-sandbox mount path (C:\a\b -> /c/a/b), so this works wherever you cloned.
-$drive  = $PSScriptRoot.Substring(0, 1).ToLower()
-$RepoVm = "/$drive" + ($PSScriptRoot.Substring(2) -replace '\\', '/')
-$LogDir = "$RepoVm/logs"
-
 Write-Host "=== rayline-hermes-demo startup ===" -ForegroundColor Cyan
 
-# 1. Docker Desktop
-Write-Host "Checking Docker Desktop..." -ForegroundColor Yellow
+# 1. Docker engine (sbx runs sandboxes on it)
+Write-Host "Checking Docker..." -ForegroundColor Yellow
 if (-not (Get-Process "Docker Desktop" -ErrorAction SilentlyContinue)) {
     Write-Host "Starting Docker Desktop..." -ForegroundColor Yellow
     Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe"
@@ -30,22 +27,22 @@ if ($LASTEXITCODE -ne 0) { Write-Host "ERROR: Docker is not responding." -Foregr
 Write-Host "  Docker is running." -ForegroundColor Green
 
 # 2. Sandbox (must already exist — see README one-time setup)
-$sandboxList = (docker sandbox ls 2>&1) -join "`n"
+$sandboxList = (sbx ls 2>&1) -join "`n"
 if ($sandboxList -notmatch $Sandbox) {
     Write-Host "ERROR: Sandbox '$Sandbox' not found. Run the one-time setup in README.md first." -ForegroundColor Red
     exit 1
 }
 Write-Host "Starting sandbox..." -ForegroundColor Yellow
-docker sandbox exec $Sandbox bash -c "echo ready" *> $null
-docker sandbox network proxy $Sandbox --policy allow *> $null   # ensure outbound is allowed
+sbx policy init allow-all *> $null            # no-op if already initialized
+sbx exec $Sandbox bash -c "echo ready" *> $null
 
 # 3. Rayline router (RRL)
 Write-Host "Starting Rayline router (RRL)..." -ForegroundColor Yellow
-docker sandbox exec -d $Sandbox bash -c "source ~/.bashrc && bash $RepoVm/rayline/start-router.sh"
+sbx exec -d $Sandbox bash -c "source ~/.bashrc && bash rayline/start-router.sh"
 $routerReady = $false
 for ($i = 0; $i -lt 15; $i++) {
     Start-Sleep -Seconds 2
-    $code = docker sandbox exec $Sandbox bash -c "curl -sS -m 3 -o /dev/null -w '%{http_code}' http://127.0.0.1:20809/version 2>/dev/null" 2>$null
+    $code = sbx exec $Sandbox bash -c "curl -sS -m 3 -o /dev/null -w '%{http_code}' http://127.0.0.1:20809/version 2>/dev/null" 2>$null
     if ($code -and $code -ne "000") { $routerReady = $true; break }
 }
 if ($routerReady) { Write-Host "  Rayline router listening on :20809." -ForegroundColor Green }
@@ -53,11 +50,11 @@ else { Write-Host "WARNING: router not responding on :20809 — check logs/rld.l
 
 # 4. Hermes gateway (Telegram), detached
 Write-Host "Starting Hermes gateway..." -ForegroundColor Yellow
-docker sandbox exec -d $Sandbox bash -c "source ~/.bashrc && hermes gateway > $LogDir/gateway.log 2>&1"
+sbx exec -d $Sandbox bash -c "source ~/.bashrc && hermes gateway > logs/gateway.log 2>&1"
 Start-Sleep -Seconds 12
-$connected = docker sandbox exec $Sandbox bash -c "grep -i 'telegram connected' ~/.hermes/logs/agent.log 2>/dev/null | tail -1" 2>$null
+$connected = sbx exec $Sandbox bash -c "grep -i 'telegram connected' ~/.hermes/logs/agent.log 2>/dev/null | tail -1" 2>$null
 
 Write-Host ""
 if ($connected) { Write-Host "=== Running — Telegram connected. DM your bot. ===" -ForegroundColor Green }
 else { Write-Host "=== Gateway starting. Give it a few seconds, then DM your bot. ===" -ForegroundColor Green }
-Write-Host "  Logs: $RepoVm/logs/ (gateway.log, rld.log) and ~/.hermes/logs/agent.log" -ForegroundColor White
+Write-Host "  Logs: repo logs/ (gateway.log, rld.log) and ~/.hermes/logs/agent.log" -ForegroundColor White

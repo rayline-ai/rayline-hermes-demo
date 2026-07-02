@@ -11,7 +11,7 @@ You (Telegram)
    ▼
 Telegram Bot API ──(long-poll, outbound)──►  Hermes gateway   ┐
                                                               │  inside the
-Hermes agent (provider: custom, anthropic_messages, :20809) ──┤  Docker sandbox
+Hermes agent (provider: custom, anthropic_messages, :20809) ──┤  sbx sandbox
    │                                                          │  (isolated MicroVM)
    ▼                                                          │
 Rayline rld router  :20809 injector → :20811 local router ────┘
@@ -36,7 +36,8 @@ get local control of routing with hosted execution.
 
 | Requirement | Where | Notes |
 |---|---|---|
-| **Docker Desktop** with **Docker Sandboxes** (the `shell` agent) | [docker.com](https://www.docker.com/products/docker-desktop/) | macOS/Windows only (MicroVM sandboxes). Enable Settings → *Features in development* → **Docker Sandboxes**. Must be recent enough that `docker sandbox create --help` lists a **`shell`** agent (Docker Desktop **4.58+** / sandbox CLI **v0.12+**) — if it's missing, **update Docker Desktop** (menu → *Check for updates*, or `brew upgrade --cask docker`). Windows needs Hyper‑V. |
+| **Docker Desktop** (running) | [docker.com](https://www.docker.com/products/docker-desktop/) | Provides the engine the sandbox runs on. macOS/Windows (MicroVM sandboxes); Windows needs Hyper‑V. |
+| The **`sbx` CLI** (Docker Sandboxes) | [github.com/docker/sbx-releases](https://github.com/docker/sbx-releases) | Runs the agent in an isolated MicroVM. Install: **macOS** `brew install docker/tap/sbx` · **Windows** `winget install Docker.sbx`. Then run `sbx login` once (Docker sign-in). |
 | A **Rayline account** | [platform.rayline.ai](https://platform.rayline.ai) | Sign up; this is what executes the models. |
 | A **Rayline router key** (`rlk-…`) | [platform.rayline.ai/keys](https://platform.rayline.ai/keys) | Create one and copy it — goes in `.env` as `RAYLINE_ROUTER_API_KEY`. |
 | A **Telegram bot token** | [@BotFather](https://t.me/BotFather) | `/newbot` → name → username ending in `bot` → copy the token. |
@@ -66,35 +67,28 @@ GATEWAY_ALLOW_ALL_USERS=true        # demo: bot replies to anyone who messages i
 
 ### 2. Create the sandbox
 
-> **Requires `docker sandbox` ≥ v0.12** (the `shell` agent). Check first:
+> First-time only: sign in and set a network policy for sandboxes.
 > ```bash
-> docker sandbox version                 # Client/Server Version must be >= v0.12.0
-> docker sandbox create --help           # the subcommand list must include `shell`
+> sbx login                 # Docker sign-in (once per machine)
+> sbx policy init allow-all # allow sandbox outbound egress (installs, Telegram, Rayline)
 > ```
-> On **v0.10.x and earlier there is no `shell` agent** and the command below fails.
-> Fix by updating Docker Desktop (menu → *Check for updates*, or `brew upgrade --cask docker`)
-> to a build that ships sandbox v0.12+ (Docker Desktop 4.58+; latest recommended).
-> MicroVM sandboxes are **macOS/Windows only**.
 
-From the repo folder (this mounts the folder — and `.env` — into the sandbox):
+From the repo folder (this mounts the folder — and `.env` — into the sandbox at the
+same path as on the host):
 
 ```bash
-docker sandbox create --name rayline-hermes-demo shell .
-docker sandbox network proxy rayline-hermes-demo --policy allow
+sbx create --name rayline-hermes-demo shell .
 ```
 
 ### 3. One-time install inside the sandbox
 
-Installs Hermes + the Rayline `rld` router and points Hermes at the router. Run it
-**interactively** (so the installs aren't torn down mid-run). Replace the path if you
-cloned somewhere other than `C:\AtlasFutures\`:
+Installs Hermes + the Rayline `rld` router and points Hermes at the router. `sbx exec`
+starts in the mounted repo, so run it with a relative path — and **interactively**
+(so the long installs aren't torn down mid-run):
 
 ```bash
-docker sandbox exec -it rayline-hermes-demo bash /c/AtlasFutures/rayline-hermes-demo/scripts/sandbox-setup.sh
+sbx exec -it rayline-hermes-demo bash scripts/sandbox-setup.sh
 ```
-
-> The mount path inside the sandbox mirrors the Windows path: `C:\AtlasFutures\rayline-hermes-demo`
-> → `/c/AtlasFutures/rayline-hermes-demo`. Adjust accordingly if you cloned elsewhere.
 
 ### 4. Start it and chat
 
@@ -110,7 +104,7 @@ find **your bot**, tap **Start**, and send a message — the reply is generated 
 To stop:
 
 ```powershell
-docker sandbox stop rayline-hermes-demo
+sbx stop rayline-hermes-demo
 ```
 
 ---
@@ -131,7 +125,7 @@ also flips `platforms.telegram.enabled: true` in Hermes' config). The gateway co
 **Verify** it connected:
 
 ```bash
-docker sandbox exec rayline-hermes-demo bash -c "grep -i 'telegram connected' ~/.hermes/logs/agent.log | tail -1"
+sbx exec rayline-hermes-demo bash -c "grep -i 'telegram connected' ~/.hermes/logs/agent.log | tail -1"
 # INFO gateway.run: ✓ telegram connected
 ```
 
@@ -205,8 +199,8 @@ networking involved.
 
 **Bot doesn't reply.** Check the router is up and Telegram connected:
 ```bash
-docker sandbox exec rayline-hermes-demo bash -c "curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:20809/version"   # any code = up; 000 = down
-docker sandbox exec rayline-hermes-demo bash -c "tail -20 ~/.hermes/logs/agent.log"
+sbx exec rayline-hermes-demo bash -c "curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:20809/version"   # any code = up; 000 = down
+sbx exec rayline-hermes-demo bash -c "tail -20 ~/.hermes/logs/agent.log"
 ```
 
 **Router log shows `status=401 routed=cloud`.** The `rlk-` key is missing/invalid — check
@@ -214,7 +208,7 @@ docker sandbox exec rayline-hermes-demo bash -c "tail -20 ~/.hermes/logs/agent.l
 
 **Watch a request flow end-to-end:**
 ```bash
-docker sandbox exec rayline-hermes-demo bash -c "tail -f logs/rld.log"
+sbx exec rayline-hermes-demo bash -c "tail -f logs/rld.log"
 # local route endpoint:rayline-cloud requested=rayline-router ... → POST /v1/messages status=200 routed=cloud
 ```
 
