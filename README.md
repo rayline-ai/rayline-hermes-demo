@@ -1,7 +1,7 @@
 # Rayline × Hermes — Telegram demo
 
 A minimal, self-contained demo that runs the [Hermes Agent](https://hermes-agent.nousresearch.com)
-(Nous Research) inside a **Docker Desktop MicroVM sandbox**, with all of its LLM traffic
+(Nous Research) inside an isolated **`sbx` MicroVM sandbox** (Docker Sandboxes), with all of its LLM traffic
 routed through the **[Rayline](https://rayline.ai) local router**, and exposes it as a
 **Telegram bot** you can chat with.
 
@@ -36,8 +36,7 @@ get local control of routing with hosted execution.
 
 | Requirement | Where | Notes |
 |---|---|---|
-| **Docker Desktop** (running) | [docker.com](https://www.docker.com/products/docker-desktop/) | Provides the engine the sandbox runs on. macOS/Windows (MicroVM sandboxes); Windows needs Hyper‑V. |
-| The **`sbx` CLI** (Docker Sandboxes) | [github.com/docker/sbx-releases](https://github.com/docker/sbx-releases) | Runs the agent in an isolated MicroVM. Install: **macOS** `brew install docker/tap/sbx` · **Windows** `winget install Docker.sbx`. Then run `sbx login` once (Docker sign-in). |
+| The **`sbx` CLI** (Docker Sandboxes) | [docker.com/products/docker-sandboxes](https://www.docker.com/products/docker-sandboxes) | Runs the agent in an isolated MicroVM; manages its own runtime. Install: **macOS** `brew install docker/tap/sbx` · **Windows** `winget install Docker.sbx`. Then run `sbx login` once (Docker sign-in). |
 | A **Rayline account** | [platform.rayline.ai](https://platform.rayline.ai) | Sign up; this is what executes the models. |
 | A **Rayline router key** (`rlk-…`) | [platform.rayline.ai/keys](https://platform.rayline.ai/keys) | Create one and copy it — goes in `.env` as `RAYLINE_ROUTER_API_KEY`. |
 | A **Telegram bot token** | [@BotFather](https://t.me/BotFather) | `/newbot` → name → username ending in `bot` → copy the token. |
@@ -92,10 +91,11 @@ sbx exec -it rayline-hermes-demo bash scripts/sandbox-setup.sh
 
 ### 4. Start it and chat
 
-From the host (PowerShell):
+From the host:
 
-```powershell
-.\run.ps1
+```bash
+./run.sh        # macOS / Linux
+.\run.ps1       # Windows (PowerShell)
 ```
 
 This starts the sandbox, the Rayline router, and the Hermes gateway. Then open Telegram,
@@ -103,7 +103,7 @@ find **your bot**, tap **Start**, and send a message — the reply is generated 
 
 To stop:
 
-```powershell
+```bash
 sbx stop rayline-hermes-demo
 ```
 
@@ -191,7 +191,8 @@ networking involved.
 | `scripts/sandbox-setup.sh` | One-time in-sandbox install of Hermes + `rld` and config wiring. |
 | `rayline/router.json` | Rayline routing config (RRL mode); set `routes.main.model` here. |
 | `rayline/start-router.sh` | Launches the `rld` router inside the sandbox (idempotent). |
-| `run.ps1` | Daily start: sandbox → Rayline router → Hermes gateway. |
+| `run.sh` | Daily start (macOS / Linux): sandbox → Rayline router → Hermes gateway. |
+| `run.ps1` | Daily start (Windows): sandbox → Rayline router → Hermes gateway. |
 
 ---
 
