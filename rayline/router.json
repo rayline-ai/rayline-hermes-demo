@@ -1,0 +1,28 @@
+{
+  "endpoints": [
+    {
+      "id": "rayline-cloud",
+      "protocol": "anthropic_messages",
+      "base_url": "https://api.rayline.ai",
+      "api_key_env": "RAYLINE_ROUTER_API_KEY",
+      "auth": "api_key",
+      "models": [
+        "rayline-router",
+        "z-ai/glm-5.2",
+        "gpt-5.5"
+      ]
+    }
+  ],
+  "routes": {
+    "main": {
+      "endpoint": "rayline-cloud",
+      "model": "rayline-router",
+      "router": "rayline-local"
+    },
+    "subagent": {
+      "endpoint": "rayline-cloud",
+      "model": "rayline-router",
+      "router": "rayline-local"
+    }
+  }
+}
