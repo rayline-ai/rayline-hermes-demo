@@ -36,7 +36,7 @@ get local control of routing with hosted execution.
 
 | Requirement | Where | Notes |
 |---|---|---|
-| **Docker Desktop 4.65+** with **Docker Sandboxes** enabled | [docker.com](https://www.docker.com/products/docker-desktop/) | Settings → *Features in development* → enable **Docker Sandboxes**. Windows needs Hyper‑V. |
+| **Docker Desktop** with **Docker Sandboxes** (the `shell` agent) | [docker.com](https://www.docker.com/products/docker-desktop/) | macOS/Windows only (MicroVM sandboxes). Enable Settings → *Features in development* → **Docker Sandboxes**. Must be recent enough that `docker sandbox create --help` lists a **`shell`** agent (Docker Desktop **4.58+** / sandbox CLI **v0.12+**) — if it's missing, **update Docker Desktop** (menu → *Check for updates*, or `brew upgrade --cask docker`). Windows needs Hyper‑V. |
 | A **Rayline account** | [platform.rayline.ai](https://platform.rayline.ai) | Sign up; this is what executes the models. |
 | A **Rayline router key** (`rlk-…`) | [platform.rayline.ai/keys](https://platform.rayline.ai/keys) | Create one and copy it — goes in `.env` as `RAYLINE_ROUTER_API_KEY`. |
 | A **Telegram bot token** | [@BotFather](https://t.me/BotFather) | `/newbot` → name → username ending in `bot` → copy the token. |
@@ -65,6 +65,16 @@ GATEWAY_ALLOW_ALL_USERS=true        # demo: bot replies to anyone who messages i
 ```
 
 ### 2. Create the sandbox
+
+> **Requires `docker sandbox` ≥ v0.12** (the `shell` agent). Check first:
+> ```bash
+> docker sandbox version                 # Client/Server Version must be >= v0.12.0
+> docker sandbox create --help           # the subcommand list must include `shell`
+> ```
+> On **v0.10.x and earlier there is no `shell` agent** and the command below fails.
+> Fix by updating Docker Desktop (menu → *Check for updates*, or `brew upgrade --cask docker`)
+> to a build that ships sandbox v0.12+ (Docker Desktop 4.58+; latest recommended).
+> MicroVM sandboxes are **macOS/Windows only**.
 
 From the repo folder (this mounts the folder — and `.env` — into the sandbox):
 
