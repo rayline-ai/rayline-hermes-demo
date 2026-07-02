@@ -26,7 +26,7 @@ platform whose gateway *dials out* — Telegram (long-polling) needs no inbound 
 public URL, and no app manifest. Just a bot token.
 
 **Why Rayline?** Rayline sits between the agent and the models and decides where each
-request goes. This demo uses **RRL mode**: the routing decision runs on *your* machine
+request goes. This demo uses **[RRL mode](https://github.com/rayline-ai/rayline/blob/main/examples/routing-modes/README.md#modes)**: the routing decision runs on *your* machine
 (the on-device static router), while the Rayline cloud executes the chosen model — so you
 get local control of routing with hosted execution.
 
